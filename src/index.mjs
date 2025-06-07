@@ -8,7 +8,7 @@ import { formatMsToTime, getBasePath } from './utils.mjs'
 dotenv.config()
 
 const BASE_PROJECT_PATH = getBasePath()
-const BASE_MEDIA_PATH = '~/Music'
+const BASE_MEDIA_PATH = process.env.BASE_MEDIA_PATH || '~/Music'
 const API_KEY = process.env.API_KEY
 const API_URL = 'https://www.googleapis.com/youtube/v3'
 
@@ -78,7 +78,7 @@ async function pullWholeList() {
         const ID = PL_IDS[i];
         const plTitle = await fetchPlaylistInfo(ID)
 
-        const listKeyName = `${plTitle ?? 'playlist'}_${i+1}`
+        const listKeyName = `${plTitle ?? 'playlist_' + i+1}`
         lists[listKeyName] = []
         let nextPageToken
 
@@ -160,29 +160,30 @@ async function downloadAudio(audioID, outpath) {
  * @returns {Promise<{amount: number, time: number, failedLoadCount: number, successLoadCount: number }>}
  */
 async function downloadAllAudio (playlists) {
-    const keys = Object.keys(playlists)
-    let infoTableOutput = []
-    const MAX_LENGTH_DEBUG_BUFFER = 30
-    let amount = 0
-    let generalExecutionTime = 0
-    let failedLoadCount = 0
-    let successLoadCount = 0
+    const keys = Object.keys(playlists);
+    const allListsLength = keys.reduce((acc, key) => (acc + playlists[key].length), 0);
+    let infoTableOutput = [];
+    const MAX_LENGTH_DEBUG_BUFFER = 30;
+    let amount = 0;
+    let generalExecutionTime = 0;
+    let failedLoadCount = 0;
+    let successLoadCount = 0;
 
     for (const key of keys) {
-        const list = playlists[key]
+        const list = playlists[key];
         if(Array.isArray(list)) {
             for (const audio of list) {
                 if(audio?.videoId) {
-                    ++amount
-                    console.clear()
+                    ++amount;
+                    console.clear();
 
                     const title = (audio?.title?.length > 50) ?
                         audio.title?.slice(0, 50) + '...' :
-                        audio.title
+                        audio.title;
                     const playlistTitle = (key?.length > 50) ?
                         key?.slice(0, 50) + '...' :
-                        key
-                    const percent = ((amount / list.length) * 100).toFixed(2) + ' %'
+                        key;
+                    const percent = ((amount / allListsLength) * 100).toFixed(2) + ' %';
 
                     infoTableOutput.push({ 
                         'N': amount,
@@ -191,18 +192,18 @@ async function downloadAllAudio (playlists) {
                         'Download Time': 'pending...',
                         'Playlist': playlistTitle,
                         'Status': 'pending',
-                        '%': percent 
-                    })
+                        '%': percent,
+                    });
                     console.table(infoTableOutput);
-                    const info = await downloadAudio(audio.videoId, key)
+                    const info = await downloadAudio(audio.videoId, key);
                     generalExecutionTime += info.execTime;
                     (info.success === true) ? successLoadCount++ : failedLoadCount++ 
                     
-                    const execTime = formatMsToTime(info.execTime)
-                    const status = info.success ? 'SUCCESS' : 'FAILED'
+                    const execTime = formatMsToTime(info.execTime);
+                    const status = info.success ? 'SUCCESS' : 'FAILED';
 
-                    infoTableOutput.pop()
-                    console.clear()
+                    infoTableOutput.pop();
+                    console.clear();
                     infoTableOutput.push({
                         'N':             amount,
                         'Title':         title,
@@ -211,17 +212,16 @@ async function downloadAllAudio (playlists) {
                         'Playlist':      playlistTitle,
                         'Status':        status,
                         '%':             percent,
-                    })
+                    });
                     if(infoTableOutput.length > MAX_LENGTH_DEBUG_BUFFER) {
                         infoTableOutput = infoTableOutput.slice(infoTableOutput.length - MAX_LENGTH_DEBUG_BUFFER)
                         if(infoTableOutput[0].N !== '...') {
-                            infoTableOutput.unshift({ 'N': '---','Title': '---','ID': '---','Download Time': '---','Playlist': '---','Status': '---','%': '---' })
+                            infoTableOutput.unshift({ 'N': '---','Title': '---','ID': '---','Download Time': '---','Playlist': '---','Status': '---','%': '---' });
                         }
                     }
                     console.table(infoTableOutput);
                 }
             }
-
         }
     }
     return {

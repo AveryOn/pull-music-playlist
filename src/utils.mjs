@@ -32,7 +32,7 @@ export function getBasePath() {
  * formatMsToTime(8638) // '00:00:08'
 */
 export function formatMsToTime(ms) {
-  if(!ms || typeof ms !== 'number') {
+  if((!ms && ms !== 0) || typeof ms !== 'number') {
     throw 'invalid ms'
   }
   const totalSeconds = Math.floor(ms / 1000)
